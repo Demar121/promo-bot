@@ -12,7 +12,7 @@ users = {}
 ADMIN_ID = 5017410644
 
 
-# ---- Render порт ----
+# ===== Render =====
 
 app = Flask(__name__)
 
@@ -28,10 +28,12 @@ def run():
 Thread(target=run).start()
 
 
-# ---- Бот ----
+# ===== Бот =====
+
 
 @bot.message_handler(commands=['start'])
 def start(message):
+
     users[message.chat.id] = {}
 
     bot.send_message(
@@ -41,10 +43,12 @@ def start(message):
 
 
 @bot.message_handler(
-    func=lambda message: message.chat.id in users 
+    func=lambda message:
+    message.chat.id in users
     and "nick" not in users[message.chat.id]
 )
 def get_nick(message):
+
     users[message.chat.id]["nick"] = message.text
 
     bot.send_message(
@@ -54,15 +58,17 @@ def get_nick(message):
 
 
 @bot.message_handler(
-    func=lambda message: message.chat.id in users 
+    func=lambda message:
+    message.chat.id in users
     and "server" not in users[message.chat.id]
 )
 def get_server(message):
+
     users[message.chat.id]["server"] = message.text
 
     bot.send_message(
         message.chat.id,
-        "Теперь отправьте скриншот 📸\nМожно отправить как фото или как файл."
+        "Теперь отправьте скриншот 📸"
     )
 
 
@@ -76,50 +82,109 @@ def get_media(message):
         )
         return
 
+
     nick = users[message.chat.id].get("nick")
     server = users[message.chat.id].get("server")
+
 
     caption = (
         "🎁 Новая заявка!\n\n"
         f"👤 Ник: {nick}\n"
         f"🌐 Сервер: {server}\n"
-        f"🆔 ID игрока: {message.chat.id}"
+        f"🆔 ID: {message.chat.id}"
     )
 
-    try:
 
-        if message.content_type == "photo":
+    markup = types.InlineKeyboardMarkup()
 
-            bot.send_photo(
-                ADMIN_ID,
-                message.photo[-1].file_id,
-                caption=caption
-            )
+    approve = types.InlineKeyboardButton(
+        "✅ Подтвердить",
+        callback_data=f"approve_{message.chat.id}"
+    )
 
-
-        elif message.content_type == "document":
-
-            bot.send_document(
-                ADMIN_ID,
-                message.document.file_id,
-                caption=caption
-            )
+    reject = types.InlineKeyboardButton(
+        "❌ Отклонить",
+        callback_data=f"reject_{message.chat.id}"
+    )
 
 
-        bot.send_message(
-            message.chat.id,
-            "✅ Заявка отправлена!\nОжидайте проверки."
+    markup.add(approve, reject)
+
+
+    if message.content_type == "photo":
+
+        bot.send_photo(
+            ADMIN_ID,
+            message.photo[-1].file_id,
+            caption=caption,
+            reply_markup=markup
         )
 
 
-    except Exception as e:
+    elif message.content_type == "document":
 
-        print("Ошибка отправки админу:", e)
+        bot.send_document(
+            ADMIN_ID,
+            message.document.file_id,
+            caption=caption,
+            reply_markup=markup
+        )
+
+
+    bot.send_message(
+        message.chat.id,
+        "✅ Заявка отправлена!\nОжидайте проверки."
+    )
+
+
+
+# ===== Кнопки админа =====
+
+
+@bot.callback_query_handler(func=lambda call: True)
+def callback(call):
+
+    action, user_id = call.data.split("_")
+
+    user_id = int(user_id)
+
+
+    if action == "approve":
 
         bot.send_message(
-            message.chat.id,
-            "❌ Ошибка отправки, попробуйте ещё раз."
+            user_id,
+            "✅ Ваша заявка проверена и одобрена!"
         )
+
+        bot.answer_callback_query(
+            call.id,
+            "Подтверждено"
+        )
+
+
+    elif action == "reject":
+
+        bot.send_message(
+            user_id,
+            "❌ Ваша заявка отклонена."
+        )
+
+        bot.answer_callback_query(
+            call.id,
+            "Отклонено"
+        )
+
+
+    bot.edit_message_reply_markup(
+        call.message.chat.id,
+        call.message.id,
+        reply_markup=None
+    )
+
 
 
 bot.infinity_polling()
+
+
+
+      
