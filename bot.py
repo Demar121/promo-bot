@@ -1,5 +1,7 @@
 import telebot
 from telebot import types
+from flask import Flask
+from threading import Thread
 
 TOKEN = "8738406014:AAFbF_Tbpj0EZMaO7-g72GUOhSNuxUYJ8Eo"
 
@@ -9,6 +11,24 @@ users = {}
 
 ADMIN_ID = 5017410644
 
+
+# ---- Render порт ----
+
+app = Flask(__name__)
+
+@app.route("/")
+def home():
+    return "Bot is alive"
+
+
+def run():
+    app.run(host="0.0.0.0", port=10000)
+
+
+Thread(target=run).start()
+
+
+# ---- Бот ----
 
 @bot.message_handler(commands=['start'])
 def start(message):
@@ -20,7 +40,10 @@ def start(message):
     )
 
 
-@bot.message_handler(func=lambda message: message.chat.id in users and "nick" not in users[message.chat.id])
+@bot.message_handler(
+    func=lambda message: message.chat.id in users 
+    and "nick" not in users[message.chat.id]
+)
 def get_nick(message):
     users[message.chat.id]["nick"] = message.text
 
@@ -30,7 +53,10 @@ def get_nick(message):
     )
 
 
-@bot.message_handler(func=lambda message: message.chat.id in users and "server" not in users[message.chat.id])
+@bot.message_handler(
+    func=lambda message: message.chat.id in users 
+    and "server" not in users[message.chat.id]
+)
 def get_server(message):
     users[message.chat.id]["server"] = message.text
 
